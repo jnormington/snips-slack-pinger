@@ -3,6 +3,18 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "CM8sPqxFAQoTNqHeeza1xRPkp5U=",
+			"path": "github.com/eclipse/paho.mqtt.golang",
+			"revision": "379fd9f99ba5b1f02c9fffb5e5952416ef9301dc",
+			"revisionTime": "2018-11-29T14:54:54Z"
+		},
+		{
+			"checksumSHA1": "ITCnG3uKUnqNXrnnulKokjQKfN4=",
+			"path": "github.com/eclipse/paho.mqtt.golang/packets",
+			"revision": "379fd9f99ba5b1f02c9fffb5e5952416ef9301dc",
+			"revisionTime": "2018-11-29T14:54:54Z"
+		},
+		{
 			"checksumSHA1": "/H0fnTKou1lxzJOKMc/DvkG7osg=",
 			"path": "github.com/google/go-cmp/cmp",
 			"revision": "2248b49eaa8e1c8c0963ee77b40841adbc19d4ca",
@@ -25,6 +37,24 @@
 			"path": "github.com/google/go-cmp/cmp/internal/value",
 			"revision": "2248b49eaa8e1c8c0963ee77b40841adbc19d4ca",
 			"revisionTime": "2018-11-15T01:20:43Z"
+		},
+		{
+			"checksumSHA1": "f3Y7JIZH61oMmp8nphqe8Mg+XoU=",
+			"path": "golang.org/x/net/internal/socks",
+			"revision": "adae6a3d119ae4890b46832a2e88a95adc62b8e7",
+			"revisionTime": "2018-11-14T21:44:15Z"
+		},
+		{
+			"checksumSHA1": "UrFs0T7kkYsUxJG5bsJt7KB8ejI=",
+			"path": "golang.org/x/net/proxy",
+			"revision": "adae6a3d119ae4890b46832a2e88a95adc62b8e7",
+			"revisionTime": "2018-11-14T21:44:15Z"
+		},
+		{
+			"checksumSHA1": "F+tqxPGFt5x7DKZakbbMmENX1oQ=",
+			"path": "golang.org/x/net/websocket",
+			"revision": "adae6a3d119ae4890b46832a2e88a95adc62b8e7",
+			"revisionTime": "2018-11-14T21:44:15Z"
 		}
 	],
 	"rootPath": "github.com/jnormington/snips-slack-pinger"
