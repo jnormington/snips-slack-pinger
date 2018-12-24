@@ -11,7 +11,10 @@ import (
 	"github.com/jnormington/snips-slack-pinger/model"
 )
 
-var generateConfig = flag.Bool("generate-config", false, "Output config template")
+var (
+	generateConfig = flag.Bool("generate-config", false, "Output config template")
+	config         = flag.String("config", "", "Config file to load")
+)
 
 func main() {
 	flag.Parse()
@@ -25,4 +28,16 @@ func main() {
 		fmt.Println(s)
 		os.Exit(0)
 	}
+
+	if *config == "" {
+		log.Fatal("missing configuration")
+	}
+
+	conf, err := model.LoadConfig(*config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Successfully loaded configuration")
+	NewMQTTClient(conf)
 }

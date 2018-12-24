@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"os"
 )
 
 // Config holds relevant configuration
@@ -46,4 +47,19 @@ func newDefaultConfig() Config {
 func GenerateConfig() (string, error) {
 	b, err := json.MarshalIndent(newDefaultConfig(), "", "  ")
 	return string(b), err
+}
+
+// LoadConfig loads path and returns config
+// instance or returns an error
+func LoadConfig(path string) (Config, error) {
+	var conf Config
+
+	file, err := os.Open(path)
+	if err != nil {
+		return conf, err
+	}
+
+	err = json.NewDecoder(file).Decode(&conf)
+
+	return conf, err
 }
