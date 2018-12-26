@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -46,6 +47,7 @@ func NewMQTTClient(c model.Config) mqttClient {
 
 	opts.SetConnectTimeout(5 * time.Second)
 	opts.SetOnConnectHandler(mqttClt.ConnectedHandler)
+	opts.SetDefaultPublishHandler(mqttClt.MessageHandler)
 
 	mqttClt.client = mqttClientFn(opts)
 	return mqttClt
@@ -86,5 +88,16 @@ func (mc mqttClient) ConnectedHandler(c mqtt.Client) {
 		go func(err error) {
 			mc.errCh <- err
 		}(tok.Error())
+	}
+}
+
+func (mc mqttClient) MessageHandler(c mqtt.Client, msg mqtt.Message) {
+	log.Println("recieved message")
+	var p model.Payload
+
+	err := json.Unmarshal(msg.Payload(), &p)
+	if err != nil {
+		// Don't error just log a handled message failure
+		log.Printf("unmarshal message payload error %s", err)
 	}
 }

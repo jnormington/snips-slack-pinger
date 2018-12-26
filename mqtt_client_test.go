@@ -45,6 +45,10 @@ func TestNewMQTTClient(t *testing.T) {
 			t.Fatal("expected connect handler to be set")
 		}
 
+		if opts.DefaultPublishHandler == nil {
+			t.Fatal("expected default message handler to be set")
+		}
+
 		u, p := opts.CredentialsProvider()
 		if u != conf.MQTTConfig.Username {
 			t.Errorf("expected username %q but got %q", conf.MQTTConfig.Username, u)
@@ -172,6 +176,26 @@ func TestConnectedHandler(t *testing.T) {
 	})
 }
 
+func TestDefaultPublishHandler(t *testing.T) {
+	t.Run("json unmarshal errors", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{}}
+
+		mc := mqttClient{
+			client: client,
+			config: model.Config{
+				SnipsConfig: model.SnipsConfig{
+					SlackIntent: "slack-intent",
+				},
+			},
+			errCh: make(chan error),
+		}
+
+		mc.MessageHandler(mc.client, testMessage{
+			payload: []byte(`{"customData": blah}`),
+		})
+	})
+}
+
 type testMQTTClient struct {
 	connected bool
 	token     *testToken
@@ -181,19 +205,28 @@ type testToken struct {
 	err           error
 	channel       string
 	connectCalled bool
+	messages      []interface{}
+}
+
+type testMessage struct {
+	payload []byte
 }
 
 func (ft testToken) Wait() bool                     { return false }
 func (ft testToken) Error() error                   { return ft.err }
 func (ft testToken) WaitTimeout(time.Duration) bool { return false }
 
-func (f testMQTTClient) IsConnected() bool                                  { return f.connected }
-func (f testMQTTClient) IsConnectionOpen() bool                             { return false }
-func (f testMQTTClient) Connect() mqtt.Token                                { f.token.connectCalled = true; return f.token }
-func (f testMQTTClient) Disconnect(uint)                                    {}
-func (f testMQTTClient) Unsubscribe(...string) mqtt.Token                   { return f.token }
-func (f testMQTTClient) AddRoute(string, mqtt.MessageHandler)               {}
-func (f testMQTTClient) Publish(string, byte, bool, interface{}) mqtt.Token { return f.token }
+func (f testMQTTClient) IsConnected() bool                    { return f.connected }
+func (f testMQTTClient) IsConnectionOpen() bool               { return false }
+func (f testMQTTClient) Connect() mqtt.Token                  { f.token.connectCalled = true; return f.token }
+func (f testMQTTClient) Disconnect(uint)                      {}
+func (f testMQTTClient) Unsubscribe(...string) mqtt.Token     { return f.token }
+func (f testMQTTClient) AddRoute(string, mqtt.MessageHandler) {}
+func (f testMQTTClient) Publish(ch string, _ byte, _ bool, pl interface{}) mqtt.Token {
+	f.token.messages = append(f.token.messages, pl)
+	f.token.channel = ch
+	return f.token
+}
 func (f testMQTTClient) Subscribe(c string, _ byte, _ mqtt.MessageHandler) mqtt.Token {
 	if f.token.Error() == nil {
 		f.token.channel = c
@@ -205,3 +238,11 @@ func (f testMQTTClient) OptionsReader() mqtt.ClientOptionsReader { return mqtt.C
 func (f testMQTTClient) SubscribeMultiple(map[string]byte, mqtt.MessageHandler) mqtt.Token {
 	return f.token
 }
+
+func (tm testMessage) Duplicate() bool   { return false }
+func (tm testMessage) Qos() byte         { return 0 }
+func (tm testMessage) Retained() bool    { return false }
+func (tm testMessage) Topic() string     { return "" }
+func (tm testMessage) MessageID() uint16 { return 1 }
+func (tm testMessage) Payload() []byte   { return tm.payload }
+func (tm testMessage) Ack()              {}
