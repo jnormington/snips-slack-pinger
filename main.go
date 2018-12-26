@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jnormington/snips-slack-pinger/model"
 )
@@ -38,6 +40,29 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("Successfully loaded configuration")
-	NewMQTTClient(conf)
+	log.Println("successfully loaded configuration")
+
+	mc := NewMQTTClient(conf)
+
+	log.Println("attempting to connect")
+	go mc.ConnectToMQTTBroker()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+Loop:
+	for {
+		select {
+		case err := <-mc.errCh:
+			if err != nil {
+				log.Fatal(err)
+				break Loop
+			}
+		case sig := <-sigCh:
+			log.Println("exiting... from signal", sig)
+			break Loop
+		}
+	}
+
+	mc.client.Disconnect(0)
 }
