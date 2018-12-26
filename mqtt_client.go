@@ -99,5 +99,27 @@ func (mc mqttClient) MessageHandler(c mqtt.Client, msg mqtt.Message) {
 	if err != nil {
 		// Don't error just log a handled message failure
 		log.Printf("unmarshal message payload error %s", err)
+		return
 	}
+
+	// Fake slacking user
+	time.Sleep(2 * time.Second)
+	eb := buildEndSession(p.SessionID, "I slacked. Mimi")
+
+	ch := "hermes/dialogueManager/endSession"
+	if t := c.Publish(ch, 1, false, eb); t.Error() != nil {
+		log.Printf("failed to publish end session %s", t.Error())
+	}
+
+	log.Println("processed message")
+}
+
+func buildEndSession(sessionID, text string) []byte {
+	end := model.EndSession{
+		Text:      text,
+		SessionID: sessionID,
+	}
+
+	eb, _ := json.Marshal(end)
+	return eb
 }

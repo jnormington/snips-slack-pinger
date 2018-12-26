@@ -10,7 +10,7 @@ type Payload struct {
 }
 
 // Intent holds name and the
-// probability of match made by the ASR
+// probability of match made by the NLU
 type Intent struct {
 	Name        string  `json:"intentName"`
 	Probability float64 `json:"probability"`
@@ -31,4 +31,11 @@ type Slot struct {
 type ValueType struct {
 	Kind  string `json:"kind"`
 	Value string `json:"value"`
+}
+
+// EndSession holds outbound message
+// when responding to user and ending session
+type EndSession struct {
+	SessionID string `json:"sessionId"`
+	Text      string `json:"text"`
 }
