@@ -15,6 +15,7 @@ type mqttClient struct {
 	config model.Config
 	client mqtt.Client
 	errCh  chan error
+	connCh chan bool
 }
 
 var (
@@ -33,6 +34,7 @@ func NewMQTTClient(c model.Config) mqttClient {
 	mqttClt := mqttClient{
 		config: c,
 		errCh:  make(chan error),
+		connCh: make(chan bool),
 	}
 
 	opts := mqtt.NewClientOptions()
@@ -66,10 +68,12 @@ func (mc mqttClient) ConnectToMQTTBroker() {
 		try++
 		if try > attempts {
 			mc.errCh <- ErrConnectFail
+			mc.connCh <- false
 		}
 
 		if mc.client.IsConnected() {
 			mc.errCh <- nil
+			mc.connCh <- true
 			break
 		}
 	}
@@ -112,6 +116,14 @@ func (mc mqttClient) MessageHandler(c mqtt.Client, msg mqtt.Message) {
 	}
 
 	log.Println("processed message")
+}
+
+func (mc mqttClient) PublishEntity(e *model.Entity) error {
+	b, _ := json.Marshal(e)
+
+	tok := mc.client.Publish("hermes/injection/perform", 0, false, b)
+
+	return tok.Error()
 }
 
 func buildEndSession(sessionID, text string) []byte {

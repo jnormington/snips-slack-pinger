@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "niEe03V6ahbTEYarxiyFFcELT68=",
+			"path": "github.com/bluele/slack",
+			"revision": "b4b4d354a079fbf4bd948faad01b32cecb2ffe03",
+			"revisionTime": "2018-05-28T01:00:58Z"
+		},
+		{
 			"checksumSHA1": "CM8sPqxFAQoTNqHeeza1xRPkp5U=",
 			"path": "github.com/eclipse/paho.mqtt.golang",
 			"revision": "379fd9f99ba5b1f02c9fffb5e5952416ef9301dc",

@@ -17,6 +17,9 @@ func TestGenerateConfig(t *testing.T) {
 	}
 
 	wc := Config{
+		SlackConfig: SlackConfig{
+			Token: "1234",
+		},
 		SnipsConfig: SnipsConfig{
 			SlackIntent: "username:intent_name",
 			SlotName:    "slack_names",

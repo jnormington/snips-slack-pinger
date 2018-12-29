@@ -230,6 +230,67 @@ func TestDefaultPublishHandler(t *testing.T) {
 	})
 }
 
+func TestPublishEntity(t *testing.T) {
+	entity := &model.Entity{
+		Ops: [][]interface{}{
+			{
+				"addFromVanilla",
+				map[string][]string{
+					"slack_names": []string{
+						"Anthony Hopkins",
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("publishes entity", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{}}
+		mc := buildTestClient(client)
+		mc.PublishEntity(entity)
+
+		got := len(client.token.messages)
+		if got != 1 {
+			t.Fatalf("expected one msg to be published but got %d", got)
+		}
+
+		gotMsg := string(client.token.messages[0].([]byte))
+		wantMsg := `{"operations":[["addFromVanilla",{"slack_names":["Anthony Hopkins"]}]]}`
+		if gotMsg != wantMsg {
+			t.Fatal(cmp.Diff(wantMsg, gotMsg))
+		}
+
+		gotCh := client.token.channel
+		wantCh := "hermes/injection/perform"
+		if gotCh != wantCh {
+			t.Fatal(cmp.Diff(wantCh, gotCh))
+		}
+	})
+
+	t.Run("publishes entity", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{err: errors.New("publish error")}}
+		mc := buildTestClient(client)
+		mc.PublishEntity(entity)
+
+		got := len(client.token.messages)
+		if got != 1 {
+			t.Fatalf("expected one msg to be published but got %d", got)
+		}
+
+		gotMsg := string(client.token.messages[0].([]byte))
+		wantMsg := `{"operations":[["addFromVanilla",{"slack_names":["Anthony Hopkins"]}]]}`
+		if gotMsg != wantMsg {
+			t.Fatal(cmp.Diff(wantMsg, gotMsg))
+		}
+
+		gotCh := client.token.channel
+		wantCh := "hermes/injection/perform"
+		if gotCh != wantCh {
+			t.Fatal(cmp.Diff(wantCh, gotCh))
+		}
+	})
+}
+
 func buildTestClient(c testMQTTClient) mqttClient {
 	return mqttClient{
 		client: c,

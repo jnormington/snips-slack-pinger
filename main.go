@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/bluele/slack"
 	"github.com/jnormington/snips-slack-pinger/model"
 )
 
@@ -43,6 +45,20 @@ func main() {
 	log.Println("successfully loaded configuration")
 
 	mc := NewMQTTClient(conf)
+	sc := slack.New(conf.SlackConfig.Token)
+	go func() {
+		// Wait for mqtt client to be connected
+		// If its failed the the program will exit
+		connected := <-mc.connCh
+
+		if connected {
+			updateSlackSlotEntity(sc, mc, conf)
+
+			for range time.Tick(time.Hour * 7) {
+				updateSlackSlotEntity(sc, mc, conf)
+			}
+		}
+	}()
 
 	log.Println("attempting to connect")
 	go mc.ConnectToMQTTBroker()
@@ -65,4 +81,23 @@ Loop:
 	}
 
 	mc.client.Disconnect(0)
+	close(mc.connCh)
+	close(mc.errCh)
+	close(sigCh)
+}
+
+func updateSlackSlotEntity(sc *slack.Slack, mc mqttClient, conf model.Config) {
+	log.Println("preparing new slack names for slot")
+
+	users, err := sc.UsersList()
+	if err != nil {
+		log.Println("get slack users error:", err)
+	}
+
+	res := model.BuildEntityFromSlackUsers(conf.SnipsConfig, users)
+	if err := mc.PublishEntity(res); err != nil {
+		log.Println("publish entity error:", err)
+	}
+
+	log.Println("finished processsing slack names slot")
 }
