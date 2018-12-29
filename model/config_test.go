@@ -19,6 +19,7 @@ func TestGenerateConfig(t *testing.T) {
 	wc := Config{
 		SnipsConfig: SnipsConfig{
 			SlackIntent: "username:intent_name",
+			SlotName:    "slack_names",
 		},
 		MQTTConfig: MQTTConfig{
 			Hosts: []string{"localhost:1833"},

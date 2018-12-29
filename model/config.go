@@ -16,6 +16,8 @@ type Config struct {
 // configration like intent name
 type SnipsConfig struct {
 	SlackIntent string `json:"slack_intent"`
+	SlotName    string `json:"slot_name"`
+}
 }
 
 // MQTTConfig contains the configuration
@@ -35,6 +37,7 @@ func newDefaultConfig() Config {
 	return Config{
 		SnipsConfig: SnipsConfig{
 			SlackIntent: "username:intent_name",
+			SlotName:    "slack_names",
 		},
 		MQTTConfig: MQTTConfig{
 			Hosts: []string{"localhost:1833"},
