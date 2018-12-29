@@ -291,6 +291,41 @@ func TestPublishEntity(t *testing.T) {
 	})
 }
 
+func TestPublishEndSession(t *testing.T) {
+	t.Run("publishes end session", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{}}
+		mc := buildTestClient(client)
+		mc.PublishEndSession("1234", "Speak quote")
+
+		got := len(client.token.messages)
+		if got != 1 {
+			t.Fatalf("expected one msg to be published but got %d", got)
+		}
+
+		gotMsg := string(client.token.messages[0].([]byte))
+		wantMsg := `{"sessionId":"1234","text":"Speak quote"}`
+		if gotMsg != wantMsg {
+			t.Fatal(cmp.Diff(wantMsg, gotMsg))
+		}
+
+		gotCh := client.token.channel
+		wantCh := "hermes/dialogueManager/endSession"
+		if gotCh != wantCh {
+			t.Fatal(cmp.Diff(wantCh, gotCh))
+		}
+	})
+
+	t.Run("publishes with error", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{err: errors.New("publish error")}}
+		mc := buildTestClient(client)
+
+		err := mc.PublishEndSession("1234", "Some text")
+		if err == nil {
+			t.Fatal("expected error but got none")
+		}
+	})
+}
+
 func buildTestClient(c testMQTTClient) mqttClient {
 	return mqttClient{
 		client: c,

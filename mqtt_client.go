@@ -86,7 +86,7 @@ func (mc mqttClient) ConnectedHandler(c mqtt.Client) {
 	log.Println("connected to MQTT")
 	si := mc.config.SnipsConfig.SlackIntent
 
-	log.Printf("registering for events on intent %q", si)
+	log.Printf("registering for events on intent %q\n", si)
 	tok := c.Subscribe(fmt.Sprintf("hermes/intent/%s", si), 0, nil)
 	if tok.Error() != nil {
 		go func(err error) {
@@ -102,17 +102,14 @@ func (mc mqttClient) MessageHandler(c mqtt.Client, msg mqtt.Message) {
 	err := json.Unmarshal(msg.Payload(), &p)
 	if err != nil {
 		// Don't error just log a handled message failure
-		log.Printf("unmarshal message payload error %s", err)
+		log.Printf("unmarshal message payload error %s\n", err)
 		return
 	}
 
 	// Fake slacking user
 	time.Sleep(2 * time.Second)
-	eb := buildEndSession(p.SessionID, "I slacked. Mimi")
-
-	ch := "hermes/dialogueManager/endSession"
-	if t := c.Publish(ch, 1, false, eb); t.Error() != nil {
-		log.Printf("failed to publish end session %s", t.Error())
+	if err := mc.PublishEndSession(p.SessionID, "I slacked. Mimi"); err != nil {
+		log.Printf("failed to publish end session %s", err)
 	}
 
 	log.Println("processed message")
@@ -126,12 +123,16 @@ func (mc mqttClient) PublishEntity(e *model.Entity) error {
 	return tok.Error()
 }
 
-func buildEndSession(sessionID, text string) []byte {
+func (mc mqttClient) PublishEndSession(sessionID, text string) error {
 	end := model.EndSession{
 		Text:      text,
 		SessionID: sessionID,
 	}
 
 	eb, _ := json.Marshal(end)
-	return eb
+
+	ch := "hermes/dialogueManager/endSession"
+	tok := mc.client.Publish(ch, 1, false, eb)
+
+	return tok.Error()
 }
