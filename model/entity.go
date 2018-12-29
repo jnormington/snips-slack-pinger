@@ -20,11 +20,11 @@ func BuildEntityFromSlackUsers(c SnipsConfig, users []*slack.User) *Entity {
 	ei := Entity{Ops: make([][]interface{}, 0)}
 
 	for _, u := range users {
-		if u == nil || u.Deleted {
+		if u == nil || u.Deleted || u.Profile == nil {
 			continue
 		}
 
-		entries = append(entries, u.Name)
+		entries = append(entries, u.Profile.RealName)
 	}
 
 	if len(entries) == 0 {

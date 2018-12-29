@@ -9,10 +9,10 @@ import (
 
 func TestBuildEntityFromSlackUsers(t *testing.T) {
 	users := []*slack.User{
-		{Name: "Jodie Foster"},
-		{Name: "Anthony Hopkins"},
-		{Name: "Scott Glenn", Deleted: true},
-		{Name: "Ted Levine"},
+		{Profile: &slack.ProfileInfo{RealName: "Jodie Foster"}},
+		{Profile: &slack.ProfileInfo{RealName: "Anthony Hopkins"}},
+		{Profile: &slack.ProfileInfo{RealName: "Scott Glenn"}, Deleted: true},
+		{Profile: &slack.ProfileInfo{RealName: "Ted Levine"}},
 	}
 
 	config := SnipsConfig{
@@ -29,6 +29,33 @@ func TestBuildEntityFromSlackUsers(t *testing.T) {
 							"Jodie Foster",
 							"Anthony Hopkins",
 							"Ted Levine",
+						},
+					},
+				},
+			},
+		}
+
+		got := BuildEntityFromSlackUsers(config, users)
+
+		if !cmp.Equal(got, want) {
+			t.Error(cmp.Diff(want, got))
+		}
+	})
+
+	// We don't want username only entries to cause some issue
+	// So lets ignore them altogether
+	t.Run("when user has no profile", func(t *testing.T) {
+		users := []*slack.User{
+			{Profile: &slack.ProfileInfo{RealName: "Anthony Hopkins"}},
+			{Name: "jodie"},
+		}
+		want := &Entity{
+			Ops: [][]interface{}{
+				{
+					"addFromVanilla",
+					map[string][]string{
+						"slack_names": []string{
+							"Anthony Hopkins",
 						},
 					},
 				},
