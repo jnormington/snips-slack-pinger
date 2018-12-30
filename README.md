@@ -45,8 +45,7 @@ It is expected that you have installed golang on the relevant device
 
 Make build defaults to linux arm build which is for raspberry and other linux arm devices), and assumes that you are not building it on the target device (ie raspberry pi)
 
-If you want to compile for 
-https://github.com/golang/go/blob/master/src/go/build/syslist.go
+If you want to compile for other devices check out the [go build syslist](https://github.com/golang/go/blob/master/src/go/build/syslist.go)
 
 ```
    GOOS=linux GOARCH=amd64 make build
