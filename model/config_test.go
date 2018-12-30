@@ -18,7 +18,12 @@ func TestGenerateConfig(t *testing.T) {
 
 	wc := Config{
 		SlackConfig: SlackConfig{
-			Token: "1234",
+			Token:     "1234",
+			Username:  "Standup bot",
+			EmojiIcon: ":point_right:",
+			Messages: []string{
+				"Put your skates on… it’s standup!",
+			},
 		},
 		SnipsConfig: SnipsConfig{
 			SlackIntent: "username:intent_name",
@@ -121,4 +126,87 @@ func TestLoadConfig(t *testing.T) {
 			t.Error(cmp.Diff(want, got))
 		}
 	})
+}
+
+func TestConfigValidate(t *testing.T) {
+	t.Run("when config all invalid", func(t *testing.T) {
+		conf := Config{}
+
+		got := conf.Validate()
+		if got == nil {
+			t.Fatal("expected error but got none")
+		}
+
+		want := "Following error(s) with config:\n" +
+			" - slack token required" +
+			" - at least one slack message required" +
+			" - snips slack intent required" +
+			" - snips slot name required"
+
+		if got.Error() != want {
+			t.Fatal(cmp.Diff(want, got))
+		}
+	})
+
+	t.Run("when some of config invalid", func(t *testing.T) {
+		conf := Config{
+			SlackConfig: SlackConfig{
+				Token: "1234",
+			},
+		}
+
+		got := conf.Validate()
+		if got == nil {
+			t.Fatal("expected error but got none")
+		}
+
+		want := "Following error(s) with config:\n" +
+			" - at least one slack message required" +
+			" - snips slack intent required" +
+			" - snips slot name required"
+
+		if got.Error() != want {
+			t.Fatal(cmp.Diff(want, got))
+		}
+	})
+
+	t.Run("when config all valid", func(t *testing.T) {
+		conf := Config{
+			SlackConfig: SlackConfig{
+				Token: "1234",
+				Messages: []string{
+					"Put your skates on… it’s standup!",
+				},
+			},
+			SnipsConfig: SnipsConfig{
+				SlackIntent: "username:intent_name",
+				SlotName:    "slack_names",
+			},
+		}
+
+		err := conf.Validate()
+		if err != nil {
+			t.Fatal("expected no error but got", err)
+		}
+	})
+}
+
+func TestSlackConfigIsBlacklisted(t *testing.T) {
+	specs := []struct {
+		config SlackConfig
+		in     string
+		want   bool
+	}{
+		{SlackConfig{Blacklist: []string{}}, "", false},
+		{SlackConfig{Blacklist: []string{}}, "ABC", false},
+		{SlackConfig{Blacklist: []string{"ABC1234", "DEF2344"}}, "ABC123", false},
+		{SlackConfig{Blacklist: []string{"ABC1234", "DEF2344"}}, "ABC1234", true},
+		{SlackConfig{Blacklist: []string{"ABC1234", "DEF2344"}}, "DEF2344", true},
+	}
+
+	for _, s := range specs {
+		if got := s.config.IsBlacklisted(s.in); got != s.want {
+			t.Errorf("expected %t but got %t", s.want, got)
+		}
+	}
 }
