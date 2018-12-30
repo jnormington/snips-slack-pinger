@@ -10,6 +10,10 @@ import (
 	"github.com/jnormington/snips-slack-pinger/model"
 )
 
+var testSlackHandlerFn = func(model.SlackConfig, string) error {
+	return nil
+}
+
 func TestNewMQTTClient(t *testing.T) {
 	conf := model.Config{
 		SnipsConfig: model.SnipsConfig{
@@ -22,7 +26,7 @@ func TestNewMQTTClient(t *testing.T) {
 		},
 	}
 
-	NewMQTTClient(conf)
+	NewMQTTClient(conf, testSlackHandlerFn)
 
 	t.Run("validate correct options passed", func(t *testing.T) {
 		defer func(fn func(*mqtt.ClientOptions) mqtt.Client) {
@@ -35,7 +39,7 @@ func TestNewMQTTClient(t *testing.T) {
 			return mqtt.NewClient(o)
 		}
 
-		NewMQTTClient(conf)
+		NewMQTTClient(conf, testSlackHandlerFn)
 
 		if opts == nil {
 			t.Fatal("expected opts to be supplied")
@@ -182,7 +186,7 @@ func TestDefaultPublishHandler(t *testing.T) {
 		mc := buildTestClient(client)
 
 		mc.MessageHandler(mc.client, testMessage{
-			payload: []byte(`{"sessionId": "123", "customData": {}}`),
+			payload: []byte(`{"sessionId": "123", "customData": {}, "slots": [{"value": {"value": "someName"}}]}`),
 		})
 
 		got := len(client.token.messages)
@@ -191,20 +195,37 @@ func TestDefaultPublishHandler(t *testing.T) {
 		}
 
 		gotMsg := string(client.token.messages[0].([]byte))
-		wantMsg := `{"sessionId":"123","text":"I slacked. Mimi"}`
+		wantMsg := `{"sessionId":"123","text":"I've slacked someName"}`
 		if gotMsg != wantMsg {
 			t.Fatal(cmp.Diff(wantMsg, gotMsg))
 		}
+	})
 
-		gotCh := client.token.channel
-		wantCh := "hermes/dialogueManager/endSession"
-		if gotCh != wantCh {
-			t.Fatal(cmp.Diff(wantCh, gotCh))
+	t.Run("publishes end session", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{}}
+		mc := buildTestClient(client)
+		mc.slackHandler = func(model.SlackConfig, string) error {
+			return errors.New("no user found")
+		}
+
+		mc.MessageHandler(mc.client, testMessage{
+			payload: []byte(`{"sessionId": "123", "customData": {}, "slots": [{"value": {"value": "someName"}}]}`),
+		})
+
+		got := len(client.token.messages)
+		if got != 1 {
+			t.Fatalf("expected a message to attempted but got %d", got)
+		}
+
+		gotMsg := string(client.token.messages[0].([]byte))
+		wantMsg := `{"sessionId":"123","text":"no user found"}`
+		if gotMsg != wantMsg {
+			t.Fatal(cmp.Diff(wantMsg, gotMsg))
 		}
 	})
 
-	t.Run("publishes end session with error", func(t *testing.T) {
-		client := testMQTTClient{token: &testToken{err: errors.New("publish message error")}}
+	t.Run("invalid number of slots", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{}}
 		mc := buildTestClient(client)
 
 		mc.MessageHandler(mc.client, testMessage{
@@ -217,15 +238,49 @@ func TestDefaultPublishHandler(t *testing.T) {
 		}
 
 		gotMsg := string(client.token.messages[0].([]byte))
-		wantMsg := `{"sessionId":"123","text":"I slacked. Mimi"}`
+		wantMsg := `{"sessionId":"123","text":"missing or too many slots from payload"}`
 		if gotMsg != wantMsg {
 			t.Fatal(cmp.Diff(wantMsg, gotMsg))
 		}
+	})
 
-		gotCh := client.token.channel
-		wantCh := "hermes/dialogueManager/endSession"
-		if gotCh != wantCh {
-			t.Fatal(cmp.Diff(wantCh, gotCh))
+	t.Run("invalid number slots publish error", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{err: errors.New("publish error")}}
+		mc := buildTestClient(client)
+
+		mc.MessageHandler(mc.client, testMessage{
+			payload: []byte(`{"sessionId": "123", "customData": {}}`),
+		})
+
+		got := len(client.token.messages)
+		if got != 1 {
+			t.Fatalf("expected a message to attempted but got %d", got)
+		}
+
+		gotMsg := string(client.token.messages[0].([]byte))
+		wantMsg := `{"sessionId":"123","text":"missing or too many slots from payload"}`
+		if gotMsg != wantMsg {
+			t.Fatal(cmp.Diff(wantMsg, gotMsg))
+		}
+	})
+
+	t.Run("publishes end session with error", func(t *testing.T) {
+		client := testMQTTClient{token: &testToken{err: errors.New("publish message error")}}
+		mc := buildTestClient(client)
+
+		mc.MessageHandler(mc.client, testMessage{
+			payload: []byte(`{"sessionId": "123", "customData": {}, "slots": [{"value": {"value": "someName"}}]}`),
+		})
+
+		got := len(client.token.messages)
+		if got != 1 {
+			t.Fatalf("expected a message to attempted but got %d", got)
+		}
+
+		gotMsg := string(client.token.messages[0].([]byte))
+		wantMsg := `{"sessionId":"123","text":"I've slacked someName"}`
+		if gotMsg != wantMsg {
+			t.Fatal(cmp.Diff(wantMsg, gotMsg))
 		}
 	})
 }
@@ -294,8 +349,11 @@ func TestPublishEntity(t *testing.T) {
 func TestPublishEndSession(t *testing.T) {
 	t.Run("publishes end session", func(t *testing.T) {
 		client := testMQTTClient{token: &testToken{}}
-		mc := buildTestClient(client)
-		mc.PublishEndSession("1234", "Speak quote")
+
+		err := PublishEndSession(client, "1234", "Speak quote")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		got := len(client.token.messages)
 		if got != 1 {
@@ -317,9 +375,8 @@ func TestPublishEndSession(t *testing.T) {
 
 	t.Run("publishes with error", func(t *testing.T) {
 		client := testMQTTClient{token: &testToken{err: errors.New("publish error")}}
-		mc := buildTestClient(client)
 
-		err := mc.PublishEndSession("1234", "Some text")
+		err := PublishEndSession(client, "1234", "Some text")
 		if err == nil {
 			t.Fatal("expected error but got none")
 		}
@@ -334,7 +391,9 @@ func buildTestClient(c testMQTTClient) mqttClient {
 				SlackIntent: "slack-intent",
 			},
 		},
-		errCh: make(chan error),
+		errCh:        make(chan error),
+		connCh:       make(chan bool),
+		slackHandler: testSlackHandlerFn,
 	}
 }
 

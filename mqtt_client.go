@@ -11,15 +11,21 @@ import (
 	"github.com/jnormington/snips-slack-pinger/model"
 )
 
+type slackHandlerFn func(model.SlackConfig, string) error
+
 type mqttClient struct {
 	config model.Config
 	client mqtt.Client
 	errCh  chan error
 	connCh chan bool
+
+	slackHandler slackHandlerFn
 }
 
 var (
-	ErrConnectFail = errors.New("failed to connect to mqtt broker")
+	ErrConnectFail      = errors.New("failed to connect to mqtt broker")
+	errInvalidSlotCount = errors.New("missing or too many slots from payload")
+	errPublishFailed    = errors.New("failed to publish end session")
 
 	mqttClientFn = func(o *mqtt.ClientOptions) mqtt.Client {
 		return mqtt.NewClient(o)
@@ -30,11 +36,12 @@ var (
 
 // NewMQTTClient builds a new mqtt client based
 // the on the loaded configuration
-func NewMQTTClient(c model.Config) mqttClient {
+func NewMQTTClient(c model.Config, sh slackHandlerFn) mqttClient {
 	mqttClt := mqttClient{
-		config: c,
-		errCh:  make(chan error),
-		connCh: make(chan bool),
+		config:       c,
+		errCh:        make(chan error),
+		connCh:       make(chan bool),
+		slackHandler: sh,
 	}
 
 	opts := mqtt.NewClientOptions()
@@ -106,10 +113,25 @@ func (mc mqttClient) MessageHandler(c mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	// Fake slacking user
-	time.Sleep(2 * time.Second)
-	if err := mc.PublishEndSession(p.SessionID, "I slacked. Mimi"); err != nil {
-		log.Printf("failed to publish end session %s", err)
+	// We won't get here if slot is required
+	// but if not set to required we will
+	if len(p.Slots) != 1 {
+		log.Println(errInvalidSlotCount)
+		if err := PublishEndSession(c, p.SessionID, errInvalidSlotCount.Error()); err != nil {
+			log.Println(err.Error(), err)
+		}
+		return
+	}
+
+	value := p.Slots[0].Value.Value
+	err = mc.slackHandler(mc.config.SlackConfig, value)
+	if err != nil {
+		PublishEndSession(c, p.SessionID, err.Error())
+		return
+	}
+
+	if err := PublishEndSession(c, p.SessionID, "I've slacked "+value); err != nil {
+		log.Println(err.Error(), err)
 	}
 
 	log.Println("processed message")
@@ -123,7 +145,7 @@ func (mc mqttClient) PublishEntity(e *model.Entity) error {
 	return tok.Error()
 }
 
-func (mc mqttClient) PublishEndSession(sessionID, text string) error {
+func PublishEndSession(c mqtt.Client, sessionID, text string) error {
 	end := model.EndSession{
 		Text:      text,
 		SessionID: sessionID,
@@ -132,7 +154,7 @@ func (mc mqttClient) PublishEndSession(sessionID, text string) error {
 	eb, _ := json.Marshal(end)
 
 	ch := "hermes/dialogueManager/endSession"
-	tok := mc.client.Publish(ch, 1, false, eb)
+	tok := c.Publish(ch, 1, false, eb)
 
 	return tok.Error()
 }
