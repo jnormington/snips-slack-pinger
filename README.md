@@ -8,6 +8,15 @@ Unfortunately this won't work in the Snip ecosystem of linking actions :( but it
 
 ## Download prebuilt binary
 
+[Darwin x64](https://github.com/jnormington/snips-slack-pinger/releases/download/v0.0.1/ssp-0.0.1-darwinx64)
+
+[Linux arm](https://github.com/jnormington/snips-slack-pinger/releases/download/v0.0.1/ssp-0.0.1-linux-arm)
+
+[Linux x86](https://github.com/jnormington/snips-slack-pinger/releases/download/v0.0.1/ssp-0.0.1-linux386)
+
+[Linux x64](https://github.com/jnormington/snips-slack-pinger/releases/download/v0.0.1/ssp-0.0.1-linux64)
+
+
 ## Generate example config
 
 ```sh
